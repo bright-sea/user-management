@@ -15,10 +15,10 @@
 					"raw": "{\n\t\"UserId\": \"1\",\n\t\"PreferencesObject\": {\n\t\t\"newName\": \"newValue\"\n\t}\n}"
 				},
 				"url": {
-					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/UpdatePreferencesByUserId",
+					"raw": "https://uldoe6jrel.execute-api.us-east-1.amazonaws.com/prod/UpdatePreferencesByUserId",
 					"protocol": "https",
 					"host": [
-						"2pnwdlimxi",
+						"uldoe6jrel",
 						"execute-api",
 						"us-east-1",
 						"amazonaws",
@@ -42,10 +42,10 @@
 					"raw": "{\n\t\"UserId\": \"1\"\n}"
 				},
 				"url": {
-					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetPreferencesByUserId",
+					"raw": "https://uldoe6jrel.execute-api.us-east-1.amazonaws.com/prod/GetPreferencesByUserId",
 					"protocol": "https",
 					"host": [
-						"2pnwdlimxi",
+						"uldoe6jrel",
 						"execute-api",
 						"us-east-1",
 						"amazonaws",
@@ -69,10 +69,10 @@
 					"raw": "{\n\t\"UserId\": \"1\"\n}"
 				},
 				"url": {
-					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetRolesByUserId",
+					"raw": "https://uldoe6jrel.execute-api.us-east-1.amazonaws.com/prod/GetRolesByUserId",
 					"protocol": "https",
 					"host": [
-						"2pnwdlimxi",
+						"uldoe6jrel",
 						"execute-api",
 						"us-east-1",
 						"amazonaws",
@@ -96,10 +96,10 @@
 					"raw": "{\n\t\"UserId\": \"1\",\n\t\"Action\": \"Write\"\n}"
 				},
 				"url": {
-					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/isAuthorized",
+					"raw": "https://uldoe6jrel.execute-api.us-east-1.amazonaws.com/prod/isAuthorized",
 					"protocol": "https",
 					"host": [
-						"2pnwdlimxi",
+						"uldoe6jrel",
 						"execute-api",
 						"us-east-1",
 						"amazonaws",
@@ -123,10 +123,10 @@
 					"raw": "{\n\t\"UserId\": \"1\"\n}"
 				},
 				"url": {
-					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetRolesByUserId",
+					"raw": "https://uldoe6jrel.execute-api.us-east-1.amazonaws.com/prod/GetAuditHistoryOfUserId",
 					"protocol": "https",
 					"host": [
-						"2pnwdlimxi",
+						"uldoe6jrel",
 						"execute-api",
 						"us-east-1",
 						"amazonaws",
@@ -134,7 +134,7 @@
 					],
 					"path": [
 						"prod",
-						"GetRolesByUserId"
+						"GetAuditHistoryOfUserId"
 					]
 				}
 			},
