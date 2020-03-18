@@ -138,6 +138,63 @@ Resources:
                     properties:
                       UserId:
                         type: string
+          /isAuthorized:
+            post:
+              description: isAuthorized (UserId, Action)
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IsAuthorizedLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: isAuthorized
+              parameters:
+                - name: body
+                  in: body
+                  description: TBD
+                  required: true
+                  schema:
+                    type: object
+                    required:
+                    - UserId
+                    - Action
+                    properties:
+                      UserId:
+                        type: string
+                      Action:
+                        type: string
+          /GetAuditHistoryOfUserId:
+            post:
+              description: Retrieve list of audit history of userId
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetAuditHistoryLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: isAuthorized
+              parameters:
+                - name: body
+                  in: body
+                  description: TBD
+                  required: true
+                  schema:
+                    type: object
+                    required:
+                    - UserId
+                    properties:
+                      UserId:
+                        type: string
+          /LoadData:
+            get:
+              description: Load intial data to both table, should remove from prod
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${IngestDataLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: loadData
 
   UserMngtApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
@@ -167,6 +224,9 @@ Resources:
                   - !GetAtt UpdatePreferencesLambda.Arn
                   - !GetAtt GetPreferencesLambda.Arn
                   - !GetAtt GetRolesLambda.Arn
+                  - !GetAtt IsAuthorizedLambda.Arn
+                  - !GetAtt GetAuditHistoryLambda.Arn
+                  - !GetAtt IngestDataLambda.Arn
 
   UpdatePreferencesLambda:
     Type: AWS::Lambda::Function
@@ -176,10 +236,58 @@ Resources:
       Runtime: nodejs12.x
       Environment:
         Variables:
-          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+          USER_DB: !Sub "${UserTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
       Code:
-        ZipFile: |
-          exports.handlers = function(event, context) {}
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk');
+
+          const userTableName = process.env['USER_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          const response = {
+            headers: {},
+            body: '',
+            statusCode: 200
+          };
+
+          exports.handleHttpRequest = function(request, context, done) {
+            try {
+              switch (request.httpMethod) {
+                case 'POST': {
+                  console.log('POST');
+                  let bodyJSON = JSON.parse(request.body || '{}');
+
+                  const params = {
+                    TableName:userTableName,
+                    Key:{
+                      "UserID": bodyJSON.UserId
+                    },
+                    UpdateExpression: "set Preferences = :p",
+                    ExpressionAttributeValues:{
+                      ":p": bodyJSON.PreferencesObject
+                    },
+                    ReturnValues:"UPDATED_NEW"
+                  };
+                  
+                  console.log("Updating the item...");
+                  docClient.update(params, function(err, data) {
+                    if (err) {
+                      console.error("Unable to update item. Error JSON:", JSON.stringify(err, null, 2));
+                    } else {
+                      console.log("UpdateItem succeeded:", JSON.stringify(data, null, 2));
+                      done(null, response);
+                    }
+                  });
+                  break;
+                }
+              }
+            } catch (e) {
+              done(e, null);
+            }
+          };
 
   GetPreferencesLambda:
     Type: AWS::Lambda::Function
@@ -189,10 +297,53 @@ Resources:
       Runtime: nodejs12.x
       Environment:
         Variables:
-          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+          USER_DB: !Sub "${UserTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
       Code:
-        ZipFile: |
-          exports.handlers = function(event, context) {}
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk');
+
+          const userTableName = process.env['USER_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          const response = {
+            headers: {},
+            body: '',
+            statusCode: 200
+          };
+
+          exports.handleHttpRequest = function(request, context, done) {
+            try {
+              switch (request.httpMethod) {
+                case 'POST': {
+                  console.log('POST');
+                  let bodyJSON = JSON.parse(request.body || '{}');
+
+                  const params = {
+                    TableName:userTableName,
+                    Key:{
+                      "UserID": bodyJSON.UserId
+                    }
+                  };
+                  
+                  docClient.get(params, function(err, data) {
+                    if (err) {
+                      console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2));
+                    } else {
+                      console.log("GetItem succeeded:", JSON.stringify(data, null, 2));
+                      response.body = JSON.stringify(data.Item.Preferences);
+                      done(null, response);
+                    }
+                  });
+                  break;
+                }
+              }
+            } catch (e) {
+              done(e, null);
+            }
+          };
 
   GetRolesLambda:
     Type: AWS::Lambda::Function
@@ -202,10 +353,171 @@ Resources:
       Runtime: nodejs12.x
       Environment:
         Variables:
-          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+          USER_DB: !Sub "${UserTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
       Code:
-        ZipFile: |
-          exports.handlers = function(event, context) {}
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk');
+
+          const userTableName = process.env['USER_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          const response = {
+            headers: {},
+            body: '',
+            statusCode: 200
+          };
+
+          exports.handleHttpRequest = function(request, context, done) {
+            try {
+              switch (request.httpMethod) {
+                case 'POST': {
+                  console.log('POST');
+                  let bodyJSON = JSON.parse(request.body || '{}');
+
+                  const params = {
+                    TableName:userTableName,
+                    Key:{
+                      "UserID": bodyJSON.UserId
+                    }
+                  };
+                  
+                  docClient.get(params, function(err, data) {
+                    if (err) {
+                      console.error("Unable to read item. Error JSON:", JSON.stringify(err, null, 2));
+                    } else {
+                      console.log("GetItem succeeded:", JSON.stringify(data, null, 2));
+                      response.body = JSON.stringify(data.Item.Roles);
+                      done(null, response);
+                    }
+                  });
+                  break;
+                }
+              }
+            } catch (e) {
+              done(e, null);
+            }
+          };
+
+  IsAuthorizedLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handleHttpRequest
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          AUDIT_DB: !Sub "${AuditTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
+      Code:
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk');
+
+          const auditTableName = process.env['AUDIT_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          const response = {
+            headers: {},
+            body: '',
+            statusCode: 200
+          };
+
+          exports.handleHttpRequest = function(request, context, done) {
+            try {
+              switch (request.httpMethod) {
+                case 'POST': {
+                  console.log('POST');
+                  let bodyJSON = JSON.parse(request.body || '{}');
+
+                  const params = {
+                    TableName:auditTableName,
+                    KeyConditionExpression: "UserID = :userId and #at = :action",
+                    ExpressionAttributeNames:{
+                        "#at": "Action"
+                    },
+                    ExpressionAttributeValues: {
+                      ":userId": bodyJSON.UserId,
+                      ":action": bodyJSON.Action
+                    }
+                  };
+                  
+                  docClient.query(params, function(err, data) {
+                    if (err) {
+                      console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+                    } else {
+                      console.log("Query succeeded.", data.Items);
+                      response.body = data.Items.length > 0;
+                      done(null, response);
+                    }
+                  });
+                  break;
+                }
+              }
+            } catch (e) {
+              done(e, null);
+            }
+          };
+
+  GetAuditHistoryLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handleHttpRequest
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          AUDIT_DB: !Sub "${AuditTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
+      Code:
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk');
+
+          const auditTableName = process.env['AUDIT_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const docClient = new AWS.DynamoDB.DocumentClient();
+
+          const response = {
+            headers: {},
+            body: '',
+            statusCode: 200
+          };
+
+          exports.handleHttpRequest = function(request, context, done) {
+            try {
+              switch (request.httpMethod) {
+                case 'POST': {
+                  console.log('POST');
+                  let bodyJSON = JSON.parse(request.body || '{}');
+
+                  const params = {
+                    TableName:auditTableName,
+                    KeyConditionExpression: "UserID = :userId",
+                    ExpressionAttributeValues: {
+                      ":userId": bodyJSON.UserId
+                    }
+                  };
+                  
+                  docClient.query(params, function(err, data) {
+                    if (err) {
+                      console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+                    } else {
+                      console.log("Query succeeded.", data.Items);
+                      response.body = JSON.stringify(data.Items);
+                      done(null, response);
+                    }
+                  });
+                  break;
+                }
+              }
+            } catch (e) {
+              done(e, null);
+            }
+          };
 
   IngestDataLambda:
     Type: AWS::Lambda::Function
@@ -293,17 +605,17 @@ Resources:
             }  
           ];
 
-          exports.handler = function (event, context) {
-            console.log(event)
-            console.log(context)
+          exports.handler = function (event, context, done) {
             try {
               writeDynamoData(userTableData, userTableName)
               writeDynamoData(auditTableData, auditTableName)
+              done(null, {
+                body: 'Load Data into Tables Successfully!',
+                statusCode: 200
+              });            
             } catch(e) {
               console.log('Failed to write data', e)
-            } finally {
-              console.log('done I am')
-            }            
+            }
           }
           async function writeDynamoData(tableData, tableName) {
             const documentClient = new AWS.DynamoDB.DocumentClient();
@@ -316,7 +628,6 @@ Resources:
                   }
                 }).promise()
               }))
-              console.log('Data ingested...')
             } catch (e) {
               console.log('Error ingesting data:', e)
             }
@@ -343,6 +654,7 @@ Resources:
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:PutItem
+                  - dynamodb:UpdateItem
                 Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
         - PolicyName: auditTable
           PolicyDocument:
@@ -352,4 +664,5 @@ Resources:
                 Action:
                   - dynamodb:GetItem
                   - dynamodb:PutItem
+                  - dynamodb:Query
                 Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${AuditTable}"

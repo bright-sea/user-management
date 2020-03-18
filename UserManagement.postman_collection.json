@@ -1,0 +1,145 @@
+{
+	"info": {
+		"_postman_id": "96586ec3-c7de-4918-a3e0-d553359c8817",
+		"name": "UserManagement",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "UpdatePreferencesByUserId",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"UserId\": \"1\",\n\t\"PreferencesObject\": {\n\t\t\"newName\": \"newValue\"\n\t}\n}"
+				},
+				"url": {
+					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/UpdatePreferencesByUserId",
+					"protocol": "https",
+					"host": [
+						"2pnwdlimxi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"prod",
+						"UpdatePreferencesByUserId"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetPreferencesByUserId",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"UserId\": \"1\"\n}"
+				},
+				"url": {
+					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetPreferencesByUserId",
+					"protocol": "https",
+					"host": [
+						"2pnwdlimxi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"prod",
+						"GetPreferencesByUserId"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetRolesByUserId",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"UserId\": \"1\"\n}"
+				},
+				"url": {
+					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetRolesByUserId",
+					"protocol": "https",
+					"host": [
+						"2pnwdlimxi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"prod",
+						"GetRolesByUserId"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "isAuthorized",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"UserId\": \"1\",\n\t\"Action\": \"Write\"\n}"
+				},
+				"url": {
+					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/isAuthorized",
+					"protocol": "https",
+					"host": [
+						"2pnwdlimxi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"prod",
+						"isAuthorized"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetAuditHistoryOfUserId",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\t\"UserId\": \"1\"\n}"
+				},
+				"url": {
+					"raw": "https://2pnwdlimxi.execute-api.us-east-1.amazonaws.com/prod/GetRolesByUserId",
+					"protocol": "https",
+					"host": [
+						"2pnwdlimxi",
+						"execute-api",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						"prod",
+						"GetRolesByUserId"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
