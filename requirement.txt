@@ -1,0 +1,95 @@
+Usermanagement API Gateway -> Lambdas (API Call) -> DynamoDB
+
+
+Data Structure
+UserTable
+ID                                            Auto generate serial number
+UserID                                  Text Not Null Primary Key
+Roles                                     jsonb
+Preferences                       jsonb
+CreateDate                         timestamp
+lastUpdatedDate             timestamp
+status                                    Text Not Null
+
+
+preference object:
+{
+                Custom_inbox: [
+{
+
+                Name: “name”,
+Value: “value” 
+
+}
+]
+
+}
+
+roles object:
+[
+{
+Name: “name”,
+Value: “value”
+
+}
+]
+
+
+
+Audit Table
+ID                                            Auto generate serial number
+UserID                                  Text Not Null Foreign Key to UserTable(UserId)
+Action                                   Text Not Null
+Action_Detail                     Text Not Null
+CreateDate                         timestamp
+
+
+API Calls	Description	Request/ Response
+Delegate	TBD	TBD
+		
+UpdatePreferencesByUserId	Updates user preferences	Request:
+{
+      UserId: “abc”,
+      PreferencesObject: {
+           The full preference object to be updated
+     }
+}
+
+Response:
+Success or fail
+		
+GetPreferencesByUserId	Retrieve user preferences	Request:
+{
+      UserId: “abc”
+}
+
+Response:
+The preference object of the user
+		
+GetRolesByUserId	Retrieve user roles	Request:
+{
+      UserId: “abc”
+}
+
+Response:
+The role object of the user
+		
+isAuthorized(userId, action)	Return Boolean true/ false	Request:
+{
+      UserId: “abc”,
+      Action: “Write”
+}
+
+Response:
+{ result: “true”}
+		
+GetAuditHistoryOfUserId	Retrieve list of audit history of userId	Request:
+{
+      UserId: “abc”
+}
+
+Response:
+The entire user audit list for the user
+		
+		
+

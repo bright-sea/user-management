@@ -1,0 +1,355 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: User management component (API Gateway -> Lambda -> DynamoDB)
+
+Resources:
+  # Policy required for all lambda function roles.
+  BaseLambdaExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Base permissions needed by all lambda functions.
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - ec2:CreateNetworkInterface
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DeleteNetworkInterface
+            Resource: "*"
+
+  UserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - AttributeName: UserID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserID
+          KeyType: HASH
+
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      AttributeDefinitions:
+        - AttributeName: UserID
+          AttributeType: S
+        - AttributeName: Action
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserID
+          KeyType: HASH
+        - AttributeName: Action
+          KeyType: RANGE
+
+  UserMngtApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${AWS::StackName}-UserMngtApiGateway"
+      Description: User Management Restful API
+      FailOnWarnings: true
+      Body:
+        swagger: 2.0
+        info:
+          description: |
+            User Management Restful API.
+          version: 1.0
+        basePath: /
+        schemes:
+          - https
+        consumes:
+          - application/json
+        produces:
+          - application/json
+        paths:
+          /UpdatePreferencesByUserId:
+            post:
+              description: Updates user preferences
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdatePreferencesLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: updatePreferencesByUserId
+              parameters:
+                - name: body
+                  in: body
+                  description: TBD
+                  required: true
+                  schema:
+                    type: object
+                    required:
+                    - UserId
+                    properties:
+                      UserId:
+                        type: string
+          /GetPreferencesByUserId:
+            post:
+              description: Retrieve user preferences
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetPreferencesLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: getPreferencesByUserId
+              parameters:
+                - name: body
+                  in: body
+                  description: TBD
+                  required: true
+                  schema:
+                    type: object
+                    required:
+                    - UserId
+                    properties:
+                      UserId:
+                        type: string
+          /GetRolesByUserId:
+            post:
+              description: Retrieve user roles
+              x-amazon-apigateway-integration:
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetRolesLambda.Arn}/invocations"
+                credentials: !GetAtt UserMngtApiGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+              operationId: getRolesByUserId
+              parameters:
+                - name: body
+                  in: body
+                  description: TBD
+                  required: true
+                  schema:
+                    type: object
+                    required:
+                    - UserId
+                    properties:
+                      UserId:
+                        type: string
+
+  UserMngtApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref UserMngtApiGateway
+      StageName: prod
+
+  UserMngtApiGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeLambda
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt UpdatePreferencesLambda.Arn
+                  - !GetAtt GetPreferencesLambda.Arn
+                  - !GetAtt GetRolesLambda.Arn
+
+  UpdatePreferencesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handleHttpRequest
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+      Code:
+        ZipFile: |
+          exports.handlers = function(event, context) {}
+
+  GetPreferencesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handleHttpRequest
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+      Code:
+        ZipFile: |
+          exports.handlers = function(event, context) {}
+
+  GetRolesLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handleHttpRequest
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          USER_DB: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+      Code:
+        ZipFile: |
+          exports.handlers = function(event, context) {}
+
+  IngestDataLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Role: !GetAtt UserMngtLambdaRole.Arn
+      Handler: index.handler
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          USER_DB: !Sub "${UserTable}"
+          AUDIT_DB: !Sub "${AuditTable}"
+          REGION_STRING: !Sub "${AWS::Region}"
+      Code:
+        ZipFile: !Sub |
+          const AWS = require('aws-sdk')
+
+          const userTableName = process.env['USER_DB'];
+          const auditTableName = process.env['AUDIT_DB'];
+          AWS.config.region = process.env['REGION_STRING'];
+
+          const userTableData = [
+            { 
+              "ID": "ID1", 
+              "UserID": "1", 
+              "Roles": [{"Name": "Role1", "Value": "RoleValue1"}, {"Name": "Role2", "Value": "RoleValue2"}], 
+              "Preferences": {
+                "Custom_inbox": [{"Name": "Pref1", "Value": "PrefValue1"}, {"Name": "Pref2", "Value": "PrefValue2"}]
+              },
+              "CreateDate": "2019-04-22T17:42:34Z",
+              "lastUpdateDate": "2019-04-22T17:42:34Z",
+              "status": "Active"
+            },
+            { 
+              "ID": "ID2", 
+              "UserID": "2", 
+              "Roles": [{"Name": "Role1", "Value": "RoleValue3"}, {"Name": "Role2", "Value": "RoleValue4"}], 
+              "Preferences": {
+                  "Custom_inbox": [{"Name": "Pref1", "Value": "PrefValue3"}, {"Name": "Pref2", "Value": "PrefValue4"}]
+              },
+              "CreateDate": "2020-01-22T17:42:34Z",
+              "lastUpdateDate": "2020-01-22T17:42:34Z",
+              "status": "Active"
+            },
+            { 
+              "ID": "ID3", 
+              "UserID": "3", 
+              "Roles": [{"Name": "Role1", "Value": "RoleValue5"}, {"Name": "Role2", "Value": "RoleValue6"}], 
+              "Preferences": {
+                  "Custom_inbox": [{"Name": "Pref1", "Value": "PrefValue5"}, {"Name": "Pref2", "Value": "PrefValue6"}]
+              },
+              "CreateDate": "2020-03-10T17:42:34Z",
+              "lastUpdateDate": "2020-04-22T17:42:34Z",
+              "status": "Active"
+            }
+          ];
+
+          const auditTableData = [
+            { 
+              "ID": "AUDITID1", 
+              "UserID": "1", 
+              "Action": "Write",
+              "Action_Detail": "Write to user table",
+              "CreateDate": "2019-04-22T17:42:34Z"
+            },
+            { 
+              "ID": "AUDITID2", 
+              "UserID": "1", 
+              "Action": "Read",
+              "Action_Detail": "read from user table",
+              "CreateDate": "2019-04-22T17:42:34Z"
+            },
+            { 
+              "ID": "AUDITID3", 
+              "UserID": "2", 
+              "Action": "Write",
+              "Action_Detail": "Write to user table",
+              "CreateDate": "2019-04-22T17:42:34Z"
+            },
+            { 
+              "ID": "AUDITID4", 
+              "UserID": "3", 
+              "Action": "Read",
+              "Action_Detail": "read from user table",
+              "CreateDate": "2019-04-22T17:42:34Z"
+            }  
+          ];
+
+          exports.handler = function (event, context) {
+            console.log(event)
+            console.log(context)
+            try {
+              writeDynamoData(userTableData, userTableName)
+              writeDynamoData(auditTableData, auditTableName)
+            } catch(e) {
+              console.log('Failed to write data', e)
+            } finally {
+              console.log('done I am')
+            }            
+          }
+          async function writeDynamoData(tableData, tableName) {
+            const documentClient = new AWS.DynamoDB.DocumentClient();
+            try {
+              await Promise.all(tableData.map(element => {
+                return documentClient.put({
+                  TableName: tableName,
+                  Item: {
+                    ...element
+                  }
+                }).promise()
+              }))
+              console.log('Data ingested...')
+            } catch (e) {
+              console.log('Error ingesting data:', e)
+            }
+          }
+
+  UserMngtLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Ref BaseLambdaExecutionPolicy
+      Policies:
+        - PolicyName: userTable
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${UserTable}"
+        - PolicyName: auditTable
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !Sub "arn:aws:dynamodb:${AWS::Region}:*:table/${AuditTable}"
